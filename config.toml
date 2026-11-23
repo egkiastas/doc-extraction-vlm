@@ -1,0 +1,40 @@
+# Single config for the pipeline, evals and service.
+# Any key can be overridden by an environment variable of the same name in upper case,
+# e.g. OLLAMA_URL=http://host.docker.internal:11434
+
+seed = 0
+
+[ollama]
+url = "http://localhost:11434"
+model = "qwen3:4b-instruct-2507-q4_K_M"
+num_ctx = 4096
+
+[vlm]
+model = "Qwen/Qwen3-VL-2B-Instruct"
+adapter = ""                 # LoRA adapter dir from the notebook; empty = zero-shot
+max_pixels = 1_310_720       # 1280 visual tokens at 32x32 px per token
+max_new_tokens = 1024
+
+[donut]
+model = "naver-clova-ix/donut-base-finetuned-cord-v2"
+
+[api]
+# Optional approach D: any OpenAI-compatible chat endpoint. Skipped when API_KEY is empty.
+base_url = "https://api.openai.com/v1"
+model = "gpt-5-mini"
+key = ""
+usd_per_mtok_in = 0.25
+usd_per_mtok_out = 2.0
+
+[cost]
+# Assumed hourly prices used to turn measured latency into $ per 1,000 pages.
+usd_per_hour_mps = 0.20      # Apple-silicon host (M4-class, hourly-rented Mac mini)
+usd_per_hour_cuda = 0.35     # NVIDIA T4, on-demand
+usd_per_hour_cpu = 0.10      # 4 vCPU general-purpose VM
+
+[service]
+extractor = "qwen3vl"        # ocr_llm | qwen3vl | qwen3vl_lora | donut | api | replay
+replay_file = "tests/fixtures/recorded.jsonl"
+db_path = "data/review.db"
+corrections_dir = "data/corrections"
+confidence_file = "results/confidence_model.json"
