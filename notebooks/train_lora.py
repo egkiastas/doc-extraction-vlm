@@ -12,16 +12,24 @@ import os
 import time
 from pathlib import Path
 
-import torch
-from peft import LoraConfig, get_peft_model
-from PIL import Image
-from transformers import AutoModelForImageTextToText, AutoProcessor, Trainer, TrainingArguments
-from transformers.trainer_utils import get_last_checkpoint
+# set before torch touches CUDA: long receipts vary in length, which fragments the allocator
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
-from docextract.config import ROOT, load_config
-from docextract.data import load_split
-from docextract.schema import PROMPT, cord_to_raw
-from docextract.vlm import shrink
+import torch  # noqa: E402
+from peft import LoraConfig, get_peft_model  # noqa: E402
+from PIL import Image  # noqa: E402
+from transformers import (  # noqa: E402
+    AutoModelForImageTextToText,
+    AutoProcessor,
+    Trainer,
+    TrainingArguments,
+)
+from transformers.trainer_utils import get_last_checkpoint  # noqa: E402
+
+from docextract.config import ROOT, load_config  # noqa: E402
+from docextract.data import load_split  # noqa: E402
+from docextract.schema import PROMPT, cord_to_raw  # noqa: E402
+from docextract.vlm import shrink  # noqa: E402
 
 TINY = "trl-internal-testing/tiny-Qwen3VLForConditionalGeneration"
 # CORD has no merchant/date/currency labels. Training on "null" for them would teach the model
@@ -100,9 +108,13 @@ def main() -> None:
 
     cuda = torch.cuda.is_available() and not args.dry_run
     bf16 = cuda and torch.cuda.is_bf16_supported()
-    # fp32 master weights + fp16 autocast: the T4 has no bf16, and an fp16 residual stream
-    # is where overflow tends to start. 2B params in fp32 is ~8.5 GB, fine on a 15 GB T4.
-    model = AutoModelForImageTextToText.from_pretrained(model_id, dtype=torch.float32)
+    # The frozen base is loaded in half precision, the dtype evaluation uses on the same GPU
+    # (fp16 on a T4, which has no bf16). peft keeps the LoRA weights in fp32. An fp32 base ran
+    # out of memory on a 15 GB T4: 8.6 GB of weights plus the fp16 copies autocast caches.
+    # fp16 base: ~9 GB peak on the longest training receipt (2,327 tokens).
+    half = torch.bfloat16 if bf16 else torch.float16
+    model = AutoModelForImageTextToText.from_pretrained(
+        model_id, dtype=half if cuda else torch.float32)
     model = get_peft_model(model, LoraConfig(
         r=args.lora_r, lora_alpha=2 * args.lora_r, lora_dropout=0.05, task_type="CAUSAL_LM",
         # language model only; the vision tower stays frozen
@@ -115,7 +127,7 @@ def main() -> None:
         num_train_epochs=args.epochs, max_steps=2 if args.dry_run else -1, learning_rate=args.lr,
         lr_scheduler_type="cosine", warmup_steps=0.03, weight_decay=0.0,
         fp16=cuda and not bf16, bf16=bf16,
-        gradient_checkpointing=cuda, gradient_checkpointing_kwargs={"use_reentrant": False},
+        activation_checkpointing=cuda, activation_checkpointing_kwargs={"use_reentrant": False},
         # every LoRA weight gets a gradient each step; the frozen vision tower isn't in DDP at all
         ddp_find_unused_parameters=False,
         logging_steps=1 if args.dry_run else 5, save_steps=25, save_total_limit=2,
