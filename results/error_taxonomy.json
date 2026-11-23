@@ -1,0 +1,64 @@
+{
+ "ocr_llm/cord-test": {
+  "item_name": 57,
+  "unlabelled_extra": 101,
+  "misread": 12,
+  "item_extra": 37,
+  "missed_field": 78,
+  "item_missed": 12,
+  "qty_in_name": 14,
+  "wrong_field": 30,
+  "item_split_merge": 14,
+  "ocr_lost": 3,
+  "other": 2,
+  "number_format": 2
+ },
+ "qwen3vl/cord-test": {
+  "unlabelled_extra": 45,
+  "misread": 24,
+  "item_extra": 26,
+  "item_missed": 6,
+  "item_name": 22,
+  "missed_field": 58,
+  "wrong_field": 33,
+  "qty_in_name": 11,
+  "computed_total": 2,
+  "other": 1,
+  "item_split_merge": 1
+ },
+ "donut/cord-test": {
+  "wrong_field": 6,
+  "missed_field": 11,
+  "unlabelled_extra": 17,
+  "item_name": 25,
+  "misread": 24,
+  "item_extra": 12,
+  "number_format": 1,
+  "item_split_merge": 6,
+  "item_missed": 8,
+  "other": 1
+ },
+ "ocr_llm/sroie-test": {
+  "merchant_variant": 24,
+  "misread": 11,
+  "other": 2,
+  "wrong_field": 2,
+  "missed_field": 2
+ },
+ "qwen3vl/sroie-test": {
+  "merchant_variant": 10,
+  "computed_total": 5,
+  "misread": 8,
+  "other": 4,
+  "rounding": 2,
+  "invalid_output": 3
+ },
+ "donut/sroie-test": {
+  "missed_field": 217,
+  "misread": 9,
+  "other": 28,
+  "invalid_output": 18,
+  "rounding": 2,
+  "number_format": 1
+ }
+}
