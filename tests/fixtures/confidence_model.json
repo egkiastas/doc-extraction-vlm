@@ -1,0 +1,29 @@
+{
+ "qwen3vl": {
+  "features": [
+   "min_logprob",
+   "agree",
+   "disagree",
+   "check_pass",
+   "check_fail",
+   "is_item"
+  ],
+  "weights": [
+   1.8110459238151837,
+   2.280423607711689,
+   0.0,
+   0.0,
+   1.3064200958592116,
+   -0.8336630923886362,
+   -0.5946513126880552
+  ],
+  "threshold": 0.9558912815273782,
+  "accept_on": [
+   "subtotal",
+   "tax",
+   "service_charge",
+   "discount",
+   "total"
+  ]
+ }
+}

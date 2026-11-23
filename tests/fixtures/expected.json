@@ -1,0 +1,86 @@
+{
+ "cord-test-063.png": {
+  "gt": {
+   "menu": [
+    {
+     "nm": "Kopi Susu Kampung.",
+     "cnt": "x1",
+     "price": "19.000",
+     "sub": [
+      {
+       "nm": "Ice"
+      },
+      {
+       "nm": "Kopi Susu Kampung Less Ice",
+       "price": "0"
+      }
+     ]
+    },
+    {
+     "nm": "Kopi Susu Kampung.",
+     "cnt": "x2",
+     "price": "38.000",
+     "sub": {
+      "nm": "Ice"
+     }
+    }
+   ],
+   "sub_total": {
+    "subtotal_price": "57.000"
+   },
+   "total": {
+    "total_price": "57.000",
+    "cashprice": "60.000",
+    "changeprice": "3.000"
+   }
+  },
+  "accept": true,
+  "f1": 1.0
+ },
+ "cord-test-091.png": {
+  "gt": {
+   "menu": [
+    {
+     "nm": "BAKSO BNGKS",
+     "cnt": "1",
+     "price": "15.000"
+    },
+    {
+     "nm": "GORENGAN",
+     "cnt": "6",
+     "price": "6.000"
+    }
+   ],
+   "total": {
+    "total_price": "21.000",
+    "cashprice": "30.000",
+    "changeprice": "9.000"
+   }
+  },
+  "accept": false,
+  "f1": 0.7999999999999999
+ },
+ "cord-test-000.png": {
+  "gt": {
+   "menu": {
+    "nm": "-TICKET CP",
+    "num": "901016",
+    "cnt": "2",
+    "price": "60.000",
+    "itemsubtotal": "60.000"
+   },
+   "sub_total": {
+    "subtotal_price": "60.000",
+    "discount_price": "-60.000",
+    "tax_price": "5.455"
+   },
+   "total": {
+    "total_price": "60.000",
+    "creditcardprice": "60.000",
+    "menuqty_cnt": "2.00"
+   }
+  },
+  "accept": false,
+  "f1": 0.9333333333333333
+ }
+}
