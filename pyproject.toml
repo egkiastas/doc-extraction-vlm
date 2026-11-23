@@ -52,7 +52,7 @@ packages = ["docextract"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["notebooks", "notes"]
+extend-exclude = ["notebooks/*.ipynb", "notes"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
