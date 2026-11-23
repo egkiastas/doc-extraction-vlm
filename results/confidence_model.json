@@ -1,0 +1,56 @@
+{
+ "ocr_llm": {
+  "features": [
+   "min_logprob",
+   "agree",
+   "disagree",
+   "check_pass",
+   "check_fail",
+   "is_item"
+  ],
+  "weights": [
+   1.4217719922586414,
+   0.8401913559322949,
+   0.0,
+   0.0,
+   1.0773463726066106,
+   0.050436093487056216,
+   -1.0746914773238978
+  ],
+  "threshold": 1.000000001,
+  "accept_on": [
+   "subtotal",
+   "tax",
+   "service_charge",
+   "discount",
+   "total"
+  ]
+ },
+ "qwen3vl": {
+  "features": [
+   "min_logprob",
+   "agree",
+   "disagree",
+   "check_pass",
+   "check_fail",
+   "is_item"
+  ],
+  "weights": [
+   1.8110459238151837,
+   2.280423607711689,
+   0.0,
+   0.0,
+   1.3064200958592116,
+   -0.8336630923886362,
+   -0.5946513126880552
+  ],
+  "threshold": 0.9558912815273782,
+  "accept_on": [
+   "subtotal",
+   "tax",
+   "service_charge",
+   "discount",
+   "total"
+  ]
+ }
+}
