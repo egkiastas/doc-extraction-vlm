@@ -1,0 +1,20 @@
+# Fits a small Colima VM (colima start --memory 3): ~400 MB for the API, ~100 MB for Prometheus.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: service/Dockerfile
+    ports: ["8000:8000"]
+    environment:
+      SERVICE_EXTRACTOR: ${SERVICE_EXTRACTOR:-replay}
+      OLLAMA_URL: http://host.docker.internal:11434
+      SERVICE_DB_PATH: /data/review.db
+      SERVICE_CORRECTIONS_DIR: /data/corrections
+    volumes: ["./data/service:/data"]
+    mem_limit: 1g
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports: ["9090:9090"]
+    volumes: ["./service/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    mem_limit: 256m
