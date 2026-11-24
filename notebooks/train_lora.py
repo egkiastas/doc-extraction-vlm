@@ -29,7 +29,7 @@ from transformers.trainer_utils import get_last_checkpoint  # noqa: E402
 from docextract.config import ROOT, load_config  # noqa: E402
 from docextract.data import load_split  # noqa: E402
 from docextract.schema import PROMPT, cord_to_raw  # noqa: E402
-from docextract.vlm import shrink  # noqa: E402
+from docextract.vlm import _dtype, shrink  # noqa: E402
 
 TINY = "trl-internal-testing/tiny-Qwen3VLForConditionalGeneration"
 # CORD has no merchant/date/currency labels. Training on "null" for them would teach the model
@@ -107,14 +107,13 @@ def main() -> None:
               "| trained answer tokens:", int((b["labels"] != -100).sum()), flush=True)
 
     cuda = torch.cuda.is_available() and not args.dry_run
-    bf16 = cuda and torch.cuda.is_bf16_supported()
     # The frozen base is loaded in half precision, the dtype evaluation uses on the same GPU
-    # (fp16 on a T4, which has no bf16). peft keeps the LoRA weights in fp32. An fp32 base ran
-    # out of memory on a 15 GB T4: 8.6 GB of weights plus the fp16 copies autocast caches.
-    # fp16 base: ~9 GB peak on the longest training receipt (2,327 tokens).
-    half = torch.bfloat16 if bf16 else torch.float16
-    model = AutoModelForImageTextToText.from_pretrained(
-        model_id, dtype=half if cuda else torch.float32)
+    # (fp16 on a T4, which has no bf16 tensor cores). peft keeps the LoRA weights in fp32. An
+    # fp32 base ran out of memory on a 15 GB T4: 8.6 GB of weights plus the fp16 copies autocast
+    # caches. fp16 base: ~9 GB peak on the longest training receipt (2,327 tokens).
+    half = _dtype("cuda") if cuda else torch.float32
+    bf16 = half == torch.bfloat16
+    model = AutoModelForImageTextToText.from_pretrained(model_id, dtype=half)
     model = get_peft_model(model, LoraConfig(
         r=args.lora_r, lora_alpha=2 * args.lora_r, lora_dropout=0.05, task_type="CAUSAL_LM",
         # language model only; the vision tower stays frozen

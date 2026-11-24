@@ -101,8 +101,9 @@ curl -F file=@tests/fixtures/cord-test-091.png localhost:8000/extract
 Fine-tuning: open `notebooks/colab_finetune_vlm.ipynb` on Kaggle or Colab with a T4. It clones
 this repo, trains, runs the same evaluation and writes `results.zip`. Unzip that here and run
 `make report`. Training runs as `notebooks/train_lora.py`, one DDP process per GPU, and the
-evaluations run as one queue per GPU. The notebook prints a runtime estimate per stage at the top
-(about 1.7 hours on Kaggle's two T4s) and resumes from checkpoints.
+evaluations run as one queue per GPU. The notebook prints a runtime estimate per stage at the top,
+stops starting new evaluations before Kaggle's 12-hour limit, and resumes from checkpoints or a
+previous run's adapter.
 
 ## What didn't work or surprised me
 
