@@ -345,14 +345,19 @@ def _sec(lat: dict, device: str, n_full: int) -> str:
     return f"{lat[device]['mean_s']:.1f}{n}"
 
 
+DEVICES = {"mps": "s/page M4 (MPS)", "cuda": "s/page T4", "cpu": "s/page CPU"}
+
+
 def summary(metrics: dict) -> str:
+    # a hardware column only when some approach was timed on it
+    devs = [d for d in DEVICES if any(d in m["latency"] for m in metrics.values())]
+    cols = ["F1", "Line-item F1", "Amounts F1", "TED acc", "JSON valid", "Checks pass",
+            *(DEVICES[d] for d in devs), "$/1k pages"]
     lines = ["## CORD test (100 receipts)", "",
-             "| Approach | F1 | Line-item F1 | Amounts F1 | TED acc | JSON valid | Checks pass "
-             "| s/page M4 (MPS) | s/page T4 | s/page CPU | $/1k pages |",
-             "|---|---|---|---|---|---|---|---|---|---|---|"]
+             "| Approach | " + " | ".join(cols) + " |", "|---|" + "---|" * len(cols)]
     for a, name in APPROACHES.items():
         if a not in metrics:
-            lines.append(f"| {name} | not run yet ||||||||||")
+            lines.append(f"| {name} | not run yet |" + "|" * (len(cols) - 1))
             continue
         t, lat = metrics[a]["cord-test"], metrics[a]["latency"]
         ted_s = pct(t.get("ted_acc")) + (f" ({pct(t['ted_acc_official'])} official)"
@@ -361,7 +366,7 @@ def summary(metrics: dict) -> str:
         lines.append(
             f"| {name} | {pct(t['f1'])} | {pct(t['items_f1'])} | {pct(t['header_f1'])} | {ted_s} "
             f"| {pct(t['json_valid'])} | {pct(t['checks_pass'])} "
-            + "".join(f"| {_sec(lat, d, t['n'])} " for d in ("mps", "cuda", "cpu"))
+            + "".join(f"| {_sec(lat, d, t['n'])} " for d in devs)
             + f"| {'-' if cost is None else f'{cost:.2f}'} |")
     lines += ["", f"## Robustness: F1 on the first {ROBUST_N} CORD test receipts", "",
               "| Approach | clean | " + " | ".join(CORRUPTIONS) + " |",

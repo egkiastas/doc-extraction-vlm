@@ -50,27 +50,48 @@ Tesseract only runs in the slim Docker image, where pulling in PyTorch for OCR i
 
 ## Models: Qwen3-4B (Q4) for text, Qwen3-VL-2B for images
 
-The limits were at most 4B parameters, one model in memory, 16 GB unified memory and a free T4
-for fine-tuning. For the text LLM, `qwen3:4b-instruct-2507-q4_K_M` is the strongest instruct
-model at that size I could run under Ollama (3.2 GB loaded, ~30 tokens/s). For the VLM I compared
-the current small options on paper and picked **Qwen3-VL-2B-Instruct**. Qwen3.5-2B is newer and
+The limits were at most 4B parameters, one model in memory, 16 GB unified memory and a free T4 for
+fine-tuning. For the text LLM, `qwen3:4b-instruct-2507-q4_K_M` is the strongest instruct model at
+that size I could run under Ollama (3.2 GB loaded, ~30 tokens/s). For the VLM I compared the
+current small options on paper and picked **Qwen3-VL-2B-Instruct**. Qwen3.5-2B is newer and
 natively multimodal, but three of every four of its layers are Gated DeltaNet linear attention,
-whose fast kernels are Triton/CUDA. On MPS it falls back to a slow PyTorch path, and fp16
-training on a T4 is a risk. SmolVLM2-2.2B is the other common pick at this size. I didn't test
-it, since the disk budget allowed one VLM checkpoint and Qwen3-VL has the larger fine-tuning
-ecosystem. PaddleOCR-VL is an excellent OCR model but outputs text/markdown, not fields, so it would only
+whose fast kernels are Triton/CUDA. On MPS it falls back to a slow PyTorch path, and fp16 training
+on a T4 is a risk. SmolVLM2-2.2B is the other common pick at this size. I didn't test it, since the
+disk budget allowed one VLM checkpoint and Qwen3-VL has the larger fine-tuning ecosystem.
+PaddleOCR-VL is an excellent OCR model but outputs text/markdown, not fields, so it would only
 replace docTR in approach A. Qwen3-VL-2B in bf16 takes 5.2 GB on MPS and decodes ~16 tokens/s.
 Images are capped at 1.3 MP (1,280 visual tokens) so prompt + image + output fit in 4k context.
 
-The service ships Qwen3-VL zero-shot. Donut is more accurate on CORD (F1 90.5 vs 81.8) but its
-output vocabulary is CORD's, with no merchant or date, and it scores 14 F1 on SROIE. OCR+LLM is
-faster per page but 9 points worse on CORD and falls apart on rotated scans.
+The service ships Qwen3-VL zero-shot (the fine-tuned version is covered below). Donut is more
+accurate on CORD (F1 90.5 vs 81.8), but its output vocabulary is CORD's, with no merchant or
+date, and it scores 14 F1 on SROIE. OCR+LLM is faster per page but 9 points worse on CORD and
+falls apart on rotated scans.
 
 Fine-tuning (approach C) trains a LoRA on the language model only, vision tower frozen, with the
 same prompt and the same transcribe-as-printed targets. CORD has no merchant/date/currency
 labels, and training on `"merchant": null` 800 times would teach the model those fields never
 exist, so the loss skips those tokens (`UNLABELLED` in the notebook). Corrections from the review
 queue are picked up as extra training examples if present.
+
+The run took 200 steps on two Kaggle T4s with DDP. On a 15 GB T4 the frozen base has to be in
+half precision: an fp32 base plus autocast's fp16 weight copies ran out of memory, while in fp16
+the longest training receipt peaks at ~9 GB (measured on MPS). It has to be fp16, not bf16. A T4
+reports bf16 as supported because it can emulate it, and emulated bf16 made the first run take
+10 hours.
+
+Why C isn't the shipped model: on CORD it is clearly the best (F1 94.1 vs 81.8 for B and 90.5
+for Donut) and it holds up best under corruptions except JPEG. On SROIE it is level with B (88.1
+vs 89.8, within noise), and most of its extra merchant errors are registration numbers copied
+along with the name. So on accuracy alone I'd pick C for receipts like CORD's. B stays the
+default for two reasons. First, weights aren't committed, so a fresh clone can run B but not C.
+Second, C's auto-accept threshold doesn't hold. Picked on validation for 99%, it accepts 89% of
+test receipts on amounts, and those are 95.5% correct. C's validation amounts are easier than its
+test amounts (F1 97.8 vs 95.3), so the threshold lands too low. B's threshold held on test: 17%
+accepted, none wrong.
+
+Shipping C would mean publishing the adapter (on the Hugging Face Hub, say), setting its threshold
+on a larger held-out set or with a safety margin, and re-recording the CI fixtures from its
+outputs.
 
 ## Metrics
 
@@ -103,16 +124,14 @@ documents above it reach 99% field accuracy, and the README reports what that th
 the untouched test split. Choosing it on test would make the headline number a fit, not a result.
 
 What an accepted document promises was the harder decision. With every field in scope, no
-threshold reaches 99% on validation for either model on its own. Even the validation documents
-whose checks all pass are only ~85% field-correct, and the misses are mostly unit price (CORD
+threshold reaches 99% on validation for A or B on its own. Even B's validation documents whose
+checks all pass are only ~85% field-correct, and the misses are mostly unit price (CORD
 labels it only when printed) and item-name spelling under strict matching. So the service accepts
 on the document amounts (subtotal, tax, service charge, discount, total), the numbers that get
 booked, and an accepted document's item lines are not guaranteed. The policy is stored with the
-model (`accept_on` in `confidence_model.json`). The report shows both policies so the gap stays
-visible.
+model (`accept_on` in `confidence_model.json`). The report shows both policies.
 
 The service ships the single-model variant (log-prob + checks). Agreement needs a second model per
-document, which doubles cost and, on this laptop, breaks the one-model-in-memory rule. The
-evaluation reports both so the trade-off is visible. Merchant/date confidences in the service use
-the same model, but CORD has no labels for them, so they are uncalibrated. That is a known gap,
-not a feature.
+document, which doubles cost and, on this laptop, breaks the one-model-in-memory rule; the report
+shows both. Merchant/date confidences in the service use the same model, but CORD has no labels
+for them, so they are uncalibrated.

@@ -3,21 +3,22 @@
 Receipts in, validated JSON out: merchant, date, currency, line items, subtotal, tax, service
 charge, discount and total. I compare OCR + LLM, a small vision-language model zero-shot, the same
 model fine-tuned with LoRA, and Donut as a CORD-trained reference, on accuracy, latency, cost,
-image corruptions and an out-of-distribution set. The best general model then runs as a service
+image corruptions and an out-of-distribution set. The zero-shot model then runs as a service
 with schema validation, arithmetic checks, calibrated confidence and a review queue whose
 corrections become training examples.
 
 - **Qwen3-VL-2B zero-shot scores F1 81.8 on CORD test**, against 73.0 for docTR OCR + Qwen3-4B. It
   is also more robust (rotation costs it 5 points and OCR+LLM 30) and best out of distribution
   (SROIE F1 89.8 vs 86.6).
-- **Donut, fine-tuned on CORD, is better in-distribution (90.5) and useless outside it:** 13.7 on
-  SROIE, because its output vocabulary has no merchant or date.
+- **A LoRA fine-tune on CORD's 800 training receipts takes the same model to 94.1**, and it stays
+  general: SROIE F1 88.1, within noise of zero-shot. What it fixes is mostly CORD's labelling
+  conventions (unit price, which lines count as items), not reading.
+- **Donut, fine-tuned on CORD, scores 90.5 there and is useless outside it:** 13.7 on SROIE,
+  because its output vocabulary has no merchant or date.
 - **Auto-accept:** with a threshold picked on validation for 99% accuracy, the service accepts
-  **17% of test receipts, with every amount correct**. With every field in scope (item names
-  matched exactly, unit price by CORD's convention), no single-model threshold reaches 99% on
-  validation, so nothing is auto-accepted. More on that below.
-- **The LoRA fine-tune (approach C) has not been run yet.** It needs a T4. The notebook is ready
-  and the row stays empty until its results come back.
+  **17% of test receipts, with every amount correct**. The fine-tuned model would accept 89%, but
+  its threshold doesn't hold on test (95.5% correct). That, and the adapter not being in the repo,
+  is why the service still runs the zero-shot model.
 
 All numbers are on the 100 CORD-v2 test receipts or a fixed 100-receipt sample of SROIE, from
 prediction files committed in `results/predictions/`. `make report` regenerates every table and
@@ -25,19 +26,20 @@ figure from them without a model.
 
 ## Results
 
-| Approach | F1 | Line-item F1 | Amounts F1 | TED acc | JSON valid | Checks pass | s/page M4 (MPS) | s/page T4 | s/page CPU | $/1k pages |
-|---|---|---|---|---|---|---|---|---|---|---|
-| A. docTR OCR + Qwen3-4B (Ollama, Q4) | 73.0 | 70.5 | 82.7 | 69.1 | 100.0 | 54.1 | 7.5 | - | 12.5 (n=10) | 0.42 |
-| B. Qwen3-VL-2B zero-shot | **81.8** | **81.9** | 81.4 | 82.8 | 100.0 | 69.0 | 10.9 | - | 205.9 (n=5) | 0.61 |
-| C. Qwen3-VL-2B + LoRA on CORD | not run yet | | | | | | | | | |
-| Donut (CORD fine-tuned, reference) | 90.5 | 89.1 | 95.5 | 91.5 (90.2 official) | 100.0 | 82.0 | 1.1 | - | 1.5 (n=10) | 0.06 |
-| D. API model | not run (no key) | | | | | | | | | |
+| Approach | F1 | Line-item F1 | Amounts F1 | TED acc | JSON valid | Checks pass | s/page M4 (MPS) | s/page CPU | $/1k pages |
+|---|---|---|---|---|---|---|---|---|---|
+| A. docTR OCR + Qwen3-4B (Ollama, Q4) | 73.0 | 70.5 | 82.7 | 69.1 | 100.0 | 54.1 | 7.5 | 12.5 (n=10) | 0.42 |
+| B. Qwen3-VL-2B zero-shot | 81.8 | 81.9 | 81.4 | 82.8 | 100.0 | 69.0 | 10.9 | 205.9 (n=5) | 0.61 |
+| C. Qwen3-VL-2B + LoRA on CORD | **94.1** | 93.8 | 95.3 | 95.1 | 100.0 | 89.9 | 9.5 | - | 0.53 |
+| Donut (CORD fine-tuned, reference) | 90.5 | 89.1 | 95.5 | 91.5 (90.2 official) | 100.0 | 82.0 | 1.1 | 1.5 (n=10) | 0.06 |
+| D. API model | not run (no key) | | | | | | | | |
 
 F1 is over every labelled or predicted field, with line items paired by Hungarian matching.
 "Checks pass" is the share of checkable outputs whose arithmetic checks all hold; the
-ground-truth labels themselves pass 95% of the time. Cost is measured latency times an assumed hourly price (M4 $0.20, T4 $0.35, CPU $0.10;
-see `config.toml`), not a quote. CPU timings are on fewer pages because a 2B VLM on CPU takes
-about 3.5 minutes per receipt.
+ground-truth labels themselves pass 95% of the time. Cost is measured latency times an assumed
+hourly price (M4 $0.20, CPU $0.10; see `config.toml`), not a quote. CPU timings are on fewer
+pages because a 2B VLM on CPU takes about 3.5 minutes per receipt. C and Donut are trained on
+CORD's training split, so CORD test is in-distribution for them and not for A and B.
 
 **Robustness**: F1 on the first 40 CORD test receipts, each corrupted once with a fixed seed.
 
@@ -45,6 +47,7 @@ about 3.5 minutes per receipt.
 |---|---|---|---|---|---|
 | A. OCR + LLM | 70.2 | 40.0 | 58.4 | 63.0 | 58.9 |
 | B. Qwen3-VL-2B | 80.9 | 76.2 | 79.2 | 77.8 | 71.3 |
+| C. Qwen3-VL-2B + LoRA | 91.7 | 88.5 | 89.2 | 88.9 | 79.9 |
 | Donut | 89.2 | 86.7 | 73.4 | 79.1 | 80.6 |
 
 **Out of distribution**: SROIE, Malaysian receipts scored on merchant, date and total. CORD-v2
@@ -53,8 +56,12 @@ has no merchant or date labels, so this is also the only test of those fields.
 | Approach | F1 | merchant | date | total | JSON valid |
 |---|---|---|---|---|---|
 | A. OCR + LLM | 86.6 | 69.0 | 96.0 | **94.9** | 100.0 |
-| B. Qwen3-VL-2B | **89.8** | **85.4** | **98.5** | 85.4 | 99.0 |
+| B. Qwen3-VL-2B | **89.8** | **85.4** | 98.5 | 85.4 | 99.0 |
+| C. Qwen3-VL-2B + LoRA | 88.1 | 77.0 | **100.0** | 87.4 | **100.0** |
 | Donut | 13.7 | 0.0 | 0.0 | 30.3 | 94.0 |
+
+C's merchant drop is mostly formatting: 14 of its 20 merchant errors are the right company with
+its registration number copied along ("99 SPEED MART S/B (519537-X)").
 
 **Auto-accept**: threshold chosen on CORD validation for 99% field accuracy, reported on test.
 
@@ -65,10 +72,19 @@ has no merchant or date labels, so this is also the only test of those fields.
 | B. Qwen3-VL-2B | all fields | log-prob + checks | 0% (no threshold reaches 99%) | - |
 | B. Qwen3-VL-2B | all fields | + agreement with A | 7% | 93.8% |
 | A. OCR + LLM | amounts | + agreement with B | 18% | 95.8% |
+| C. Qwen3-VL-2B + LoRA | amounts | log-prob + checks | 89% | 95.5% |
+| C. Qwen3-VL-2B + LoRA | amounts | + agreement with A | 88% | 96.0% |
+| C. Qwen3-VL-2B + LoRA | all fields | log-prob + checks | 49% | 98.1% |
+| C. Qwen3-VL-2B + LoRA | all fields | + agreement with A | 26% | 100% |
 
 ![Coverage vs accuracy](results/figures/coverage_qwen3vl.png)
 
-Calibration plots are in `results/figures/`. The full error taxonomy, about 1,000 wrong fields
+C's threshold doesn't transfer. Its amounts are easier on validation than on test (F1 97.8 vs
+95.3), so the threshold lands low and the test receipts above it are only 95.5% correct. 100
+validation receipts are too few to set a 99% threshold for a model this accurate
+([C's curve](results/figures/coverage_qwen3vl_lora.png)).
+
+Calibration plots are in `results/figures/`. The full error taxonomy, about 1,150 wrong fields
 sorted into 17 categories per approach, is in [evaluation/error_analysis.md](evaluation/error_analysis.md).
 The decisions behind all of this are in [docs/design.md](docs/design.md).
 
@@ -77,8 +93,9 @@ The decisions behind all of this are in [docs/design.md](docs/design.md).
 `POST /extract` takes an image or a PDF (first page). It returns the parsed receipt, the check
 results, a confidence per field, a document score and `accepted` or `review`.
 Documents for review wait in a SQLite queue. The Gradio UI at `/review` shows the image beside
-the editable fields, with the least confident fields listed above them. A saved correction is written to `data/corrections/` as
-image + target JSON, the format the fine-tuning notebook picks up. Prometheus metrics are at
+the editable fields, with the least confident fields listed above them. A saved correction is
+written to `data/corrections/` as image + target JSON, the format the fine-tuning notebook picks
+up. Prometheus metrics are at
 `/metrics/`: decisions, invalid outputs, latency, queue size and corrections.
 
 ![Review UI](docs/review_ui.png)
@@ -105,8 +122,25 @@ evaluations run as one queue per GPU. The notebook prints a runtime estimate per
 stops starting new evaluations before Kaggle's 12-hour limit, and resumes from checkpoints or a
 previous run's adapter.
 
+The adapter behind row C was trained on Kaggle's two T4s: r=16 on the language model only,
+2 epochs over 800 receipts, effective batch 8, 200 steps, with loss falling from 0.17 to 0.02
+(`results/finetune/`). It was evaluated on the M4. The adapter goes in `adapters/qwen3vl_lora/`,
+which is git-ignored. To serve it:
+`SERVICE_EXTRACTOR=qwen3vl_lora VLM_ADAPTER=adapters/qwen3vl_lora make serve`.
+
 ## What didn't work or surprised me
 
+- **A T4 reports bf16 support it doesn't have in hardware.** `torch.cuda.is_bf16_supported()`
+  is True on a T4 because bf16 can be emulated, so the first run trained in emulated bf16: 10
+  hours for 200 steps. Evaluation ran at ~45 s per page, and Kaggle's 12-hour limit stopped it.
+  The dtype is now chosen by compute capability (fp16 below Ampere). I haven't re-timed it on a
+  T4, so there is no T4 latency column.
+- **Fine-tuning taught conventions more than reading.** CORD errors fell from 229 to 70, mostly
+  missed unit prices, swapped fields and extra item lines. Misreads barely moved (24 → 21); the
+  vision tower was frozen.
+- **The fine-tune copies whole lines, even where it had no training signal.** Merchant tokens got
+  no loss, yet on SROIE it keeps the registration number in the merchant name, and it returns the
+  total printed above the 5-sen rounding line (6 receipts, 2 for B).
 - **99% on every field was out of reach for a single model.** Even validation receipts whose
   arithmetic checks all pass are only about 85% field-correct. The misses are mostly unit price
   (CORD labels it only when printed; the OCR+LLM pipeline fills it in, the VLM leaves it out even
@@ -134,8 +168,11 @@ previous run's adapter.
 - Merchant and date confidence is uncalibrated: CORD has no labels to fit it on.
 - SROIE merchant labels mix brand names and legal entities, so merchant F1 partly measures
   agreement with one annotator.
-- The confidence model, the threshold and the CI fixtures are fitted to Qwen3-VL zero-shot.
-  Switching the shipped model means rerunning `make report` and rebuilding the fixtures.
+- The CI fixtures are recorded from Qwen3-VL zero-shot. `make report` fits a confidence model
+  and threshold per approach, and the service picks the one for its extractor. Switching the
+  shipped model also means rebuilding the fixtures.
+- C's adapter isn't committed: a fresh clone can rebuild C's tables from its predictions but
+  can't run it.
 - No API row (D): it runs when `API_KEY` is set and is skipped otherwise.
 
 Data: [CORD-v2](https://huggingface.co/datasets/naver-clova-ix/cord-v2) (CC BY 4.0) and

@@ -52,5 +52,32 @@
    "discount",
    "total"
   ]
+ },
+ "qwen3vl_lora": {
+  "features": [
+   "min_logprob",
+   "agree",
+   "disagree",
+   "check_pass",
+   "check_fail",
+   "is_item"
+  ],
+  "weights": [
+   2.719026681409607,
+   2.8863643787901974,
+   0.0,
+   0.0,
+   2.236846636896594,
+   -1.1108288468410559,
+   -0.6310354554225305
+  ],
+  "threshold": 0.8462688064224537,
+  "accept_on": [
+   "subtotal",
+   "tax",
+   "service_charge",
+   "discount",
+   "total"
+  ]
  }
 }

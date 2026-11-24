@@ -25,7 +25,7 @@ def pick_device() -> str:
 def _dtype(device: str):
     """bf16, except on CUDA GPUs older than Ampere (the T4), which get fp16. Don't use
     torch.cuda.is_bf16_supported() here: it is True on a T4 because bf16 can be emulated there,
-    and emulated bf16 made T4 training and inference run about 10x slower than fp16."""
+    and in emulated bf16 a LoRA run took 10 hours on two T4s and evaluation ~45 s per page."""
     import torch
 
     if device == "cuda" and torch.cuda.get_device_capability()[0] < 8:

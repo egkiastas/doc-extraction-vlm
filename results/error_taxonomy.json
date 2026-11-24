@@ -26,6 +26,18 @@
   "other": 1,
   "item_split_merge": 1
  },
+ "qwen3vl_lora/cord-test": {
+  "unlabelled_extra": 19,
+  "misread": 21,
+  "item_name": 8,
+  "item_extra": 4,
+  "number_format": 4,
+  "computed_total": 2,
+  "missed_field": 5,
+  "wrong_field": 3,
+  "item_missed": 3,
+  "qty_in_name": 1
+ },
  "donut/cord-test": {
   "wrong_field": 6,
   "missed_field": 11,
@@ -52,6 +64,14 @@
   "other": 4,
   "rounding": 2,
   "invalid_output": 3
+ },
+ "qwen3vl_lora/sroie-test": {
+  "misread": 5,
+  "merchant_variant": 20,
+  "computed_total": 3,
+  "rounding": 6,
+  "other": 1,
+  "missed_field": 1
  },
  "donut/sroie-test": {
   "missed_field": 217,
